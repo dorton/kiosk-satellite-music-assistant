@@ -23,9 +23,11 @@ playing on other players.
 ## What you need
 
 - **Kiosk Satellite** with plugin support, on **Android 8.0 or newer**.
-- **Home Assistant** with the **Music Assistant** app installed, signed in with
-  the same account the kiosk already uses.
-- **Music Assistant 2.10.x**.
+- **Home Assistant**, already signed in on the kiosk. The plugin uses that same
+  account; there is nothing extra to sign in to.
+- **Music Assistant** installed as a Home Assistant app, and available to that
+  account. A standalone Music Assistant server is not supported.
+- **Music Assistant 2.10.x** — this release is tested against 2.10.2.
 
 You do not need to change any Kiosk settings, and the plugin never reconfigures
 Kiosk's own music player.
@@ -62,6 +64,14 @@ Open the plugin, then **Library → Settings → Plugin**:
 | Ducking | How far the music drops during a voice announcement, as **1–10%** of the current volume. Default **10%**. |
 | Prevent screensaver while playing | Keeps the screen awake while music plays. Off by default, and it does not change your Kiosk display settings. |
 | Hardware buttons control group volume | Lets the kiosk's volume buttons adjust the whole group this kiosk is playing in. Off by default. |
+
+## What your account can do
+
+Browsing, playback, volume, groups, the queue and playing music on this kiosk
+work with any Music Assistant account. Favourites, adding to the library and
+creating playlists need the **user** role. Changing sound settings and removing
+items from your library need the **admin** role. The plugin never grants or
+changes permissions itself.
 
 ## Using it
 

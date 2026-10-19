@@ -29,8 +29,9 @@ playing on other players.
   account. A standalone Music Assistant server is not supported.
 - **Music Assistant 2.10.x** — this release is tested against 2.10.2.
 
-You do not need to change any Kiosk settings, and the plugin never reconfigures
-Kiosk's own music player.
+The plugin never changes any Kiosk settings. Two settings on the kiosk do need to
+be checked, because Kiosk's own player takes over the screen when music starts and
+stops.
 
 ## Install
 
@@ -55,6 +56,22 @@ Open the plugin, then **Library → Settings → Plugin**:
    blank receiver name follows the kiosk's name; you can type your own.
 3. Choose your **Default player** — this kiosk, or another player in your home.
 4. Tap **Save**. Each kiosk keeps its own settings.
+
+### Check these on the kiosk
+
+Kiosk's own music player watches for playback starting and stopping, so it needs
+turning off where it would run beside this plugin. In **Settings → Media Player**:
+
+- **Sendspin Player** — turn **Enable Sendspin player** off. Otherwise the kiosk
+  registers a second player in Music Assistant next to this plugin's receiver.
+- **Player source / Player**, **Floating Player**, **Now Playing** — do not point
+  Kiosk at the same Music Assistant player this plugin controls, and leave Kiosk's
+  floating player card and full screen Now Playing view off. Kiosk shows them
+  whenever its player is playing or has a queue, so they would appear alongside
+  the plugin's own interface.
+
+The legacy **Previous default format → Follow Kiosk Satellite** setup is the
+exception: it drives Kiosk's own Sendspin player and needs it enabled.
 
 ### Playback preferences
 

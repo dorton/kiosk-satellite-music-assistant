@@ -26,13 +26,16 @@ library actions depend on permissions and provider/player support.
 pairing. The installed plugin ID remains `musicassistantplugin`; the new ZIP
 name follows Kiosk's community-release requirements.
 
-## Release preparation
+## Notes
 
-- Concise setup descriptions and installation/build/security documentation.
-- Self-contained, pinned SDK/Gradle build and Actions release packaging.
-- Temporary collector, remote debug logging and logging-only tests removed.
-- Radio lyrics message: **Lyrics are not available for radio playback.**
+- Local playback uses the plugin's own encrypted Sendspin receiver, separate from
+  Kiosk's built-in player. The README lists the Kiosk settings to check first.
+- **Lyrics are not available for radio playback.** Ordinary track lyrics depend on
+  the provider and the station's metadata.
+- EQ and library changes depend on the signed-in account's Music Assistant role and
+  on what the provider or player supports.
+- Automated checks do not replace physical-device acceptance. Try the plugin on one
+  kiosk before rolling it out everywhere.
 
-Radio lyrics remain unsupported; ordinary track lyrics depend on providers.
-Automated tests do not replace physical-device acceptance. Community listing is
-submitted and approved separately; this release does not imply listing approval.
+This is the first stable release. A community listing is submitted and approved
+separately, so this release does not imply that it is listed yet.

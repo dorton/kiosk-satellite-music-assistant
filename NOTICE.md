@@ -1,6 +1,6 @@
 # Upstream references
 
-Version 0.9.0-dev adds MIT SendspinDroid player/shared modules; their exact
+The plugin embeds the MIT SendspinDroid player/shared modules; their exact
 revisions and compatibility changes are recorded in
 `third_party/sendspindroid/UPSTREAM.md`. The plugin-owned receiver adapter and
 secure store are adapted from our retained standalone app code, not Kiosk code.
@@ -20,8 +20,9 @@ card's read-only calls. No Music Assistant implementation code is bundled.
 https://github.com/music-assistant/server
 
 The included Gradle 9.3.1 wrapper comes from https://github.com/gradle/gradle
-and is Apache-2.0 licensed (see `sdk/LICENSE` for the licence text). Its JAR
-and distribution checksums are checked during release validation.
+and is Apache-2.0 licensed; the same Apache-2.0 text is packaged in the ZIP as
+`assets/Apache-2.0.txt`. Its JAR and distribution checksums are checked during
+release validation.
 The release workflow is adapted from the Apache-2.0 Kiosk SDK template.
 Release R8 rules remove upstream Android/shared development log calls; upstream
 source and required notices are retained. Temporary plugin logging is removed.

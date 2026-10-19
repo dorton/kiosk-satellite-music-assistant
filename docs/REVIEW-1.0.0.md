@@ -43,10 +43,20 @@ failures. Removing trace collection does not relax any verification condition.
 Queue remote-refresh, tap/hold menus, protected removal, staged EQ and deliberate
 user-change protection are retained.
 
+## Local verification record
+
+- Source/manifest checks, 508 plugin tests and 165 shared JVM tests (3 skipped)
+  pass, together with the package and release-identity checks. The ZIP builds from
+  the hash-pinned SDK and checksum-pinned Gradle wrapper.
+- The first release-runner attempt failed before producing any asset: a pinned
+  helper action installed an SDK package its publisher has since withdrawn. The
+  workflow now uses a reviewed release of that action and installs the platform and
+  build-tools it needs explicitly.
+
 ## Remaining release gates
 
-- Run the complete source/Java/Android/JVM tests and package checks on the final
-  source snapshot; examine the independent GitHub Actions result.
+- Inspect the independent GitHub Actions result for the tagged commit and confirm
+  the release carries the three assets uploaded by `github-actions[bot]`.
 - Physical-device acceptance remains manual, particularly long hardware holds,
   standalone/option-off behaviour, call/speech restoration and UI rendering.
 - Repository visibility, GitHub licence recognition, stable release asset uploader

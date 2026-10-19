@@ -7,7 +7,8 @@ install or use it — see the [README](../README.md) for that.
 
 - Python 3
 - JDK 21
-- Android SDK platform 36 and build-tools 36.0.0, with accepted licences
+- Android SDK platform 36 and a current build-tools (36.0.0 in the release
+  workflow), with accepted licences
 - Linux or macOS
 
 The included **Gradle 9.3.1** wrapper verifies its distribution checksum. Its
@@ -31,6 +32,9 @@ same checkout.
 
 `tools/check.py` runs the source and manifest checks without Java; pass `--java`
 and `--json-jar` to include the Java tests.
+
+The Gradle APK is a build container only. The deliverable is the release ZIP;
+never install the APK on a kiosk.
 
 ## SDK and vendored code
 

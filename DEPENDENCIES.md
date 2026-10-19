@@ -11,9 +11,9 @@ Runtime dependencies resolved by the pinned Gradle modules:
 - kotlinx.coroutines 1.10.2 — Apache-2.0, JetBrains.
 - kotlinx.serialization 1.8.0 — Apache-2.0, JetBrains.
 - Ktor 3.1.1 — Apache-2.0, JetBrains.
-- OkHttp / Okio — Apache-2.0, Square.
+- OkHttp / Okio (via `io.ktor:ktor-client-okhttp:3.1.1`) — Apache-2.0, Square.
 - Bouncy Castle bcprov-jdk18on 1.80 — MIT, the Legion of the Bouncy Castle.
-- SLF4J — MIT, QOS.ch.
+- SLF4J (via Ktor 3.1.1) — MIT, QOS.ch.
 
 The Kiosk plugin SDK is compile-only (Apache-2.0), supplied by the host and
 excluded from the delivered DEX. Kiosk application implementation code is not

@@ -65,7 +65,7 @@ The official requirements are maintained by the
 Local validation is necessary but cannot establish public listing eligibility.
 
 - Public GitHub repository containing one plugin, all source and a licence GitHub
-  recognises. Keep the repository private until its owner chooses to change it.
+  recognises. Only the repository owner changes its visibility.
 - Stable, non-draft release with the three correctly named Actions-uploaded assets.
 - Valid SDK 1 manifest, icon, package contents, size and matching checksum.
 - README at the release tag, owner submission and an available plugin ID.

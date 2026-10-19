@@ -1,0 +1,413 @@
+package com.sendspindroid.sendspin.protocol
+
+/**
+ * SendSpin Protocol constants and data classes.
+ *
+ * Protocol spec: https://www.sendspin-audio.com/spec/
+ */
+object SendSpinProtocol {
+    const val VERSION = 1
+    const val ENDPOINT_PATH = "/sendspin"
+
+    /**
+     * How long a pairing attempt may stay open before the client aborts it.
+     *
+     * "The client bounds each attempt with an attempt timeout measured from its
+     * first message (recommended 2 minutes)."
+     */
+    const val PAIR_ATTEMPT_TIMEOUT_MS = 120_000L
+
+    /**
+     * Binary message header: 1 byte type + 8 bytes big-endian int64 timestamp.
+     */
+    const val BINARY_HEADER_SIZE_BYTES = 9
+
+    /**
+     * Binary message type identifiers.
+     */
+    object BinaryType {
+        /**
+         * A JSON message body (UTF-8). Every application message travels this
+         * way once the Noise handshake completes.
+         */
+        const val JSON = 0
+
+        /** Reserved by the spec for future use. */
+        const val RESERVED = 1
+
+        /** Fragmentation, see messaging.md#fragmentation. Handled in item 1.5. */
+        const val FRAGMENT_MORE = 2
+        const val FRAGMENT_END = 3
+
+        const val AUDIO = 4
+        const val ARTWORK_BASE = 8  // 8-11 for channels 0-3
+        const val VISUALIZER = 16
+    }
+
+    /**
+     * Noise transport framing limits.
+     *
+     * "A single Noise transport message is limited to 65535 bytes by the Noise
+     * specification. Both defined cipher suites use a 16-byte AEAD
+     * authentication tag, and the message type byte occupies the first byte of
+     * the AEAD plaintext, so the application payload per frame is at most
+     * 65535 - 16 - 1 = 65518 bytes." Anything larger must be fragmented (1.5).
+     */
+    object NoiseFraming {
+        const val MAX_TRANSPORT_MESSAGE = 65535
+        const val AEAD_TAG = 16
+        const val TYPE_BYTE = 1
+        const val MAX_PLAINTEXT = MAX_TRANSPORT_MESSAGE - AEAD_TAG          // 65519
+        const val MAX_PAYLOAD = MAX_PLAINTEXT - TYPE_BYTE                   // 65518
+    }
+
+    /**
+     * Audio format constants.
+     */
+    object AudioFormat {
+        const val SAMPLE_RATE = 48000
+        const val CHANNELS = 2
+        const val CHANNELS_MONO = 1
+        const val BIT_DEPTH = 16
+        const val DEFAULT_CODEC = "pcm"
+    }
+
+    /**
+     * Artwork request constants for client/hello handshake.
+     */
+    object Artwork {
+        const val REQUEST_SIZE = 500  // Requested artwork width/height in pixels
+    }
+
+    /**
+     * Time synchronization constants.
+     *
+     * Uses NTP-style best-of-N: send N packets, pick the one with lowest RTT.
+     * This filters out network jitter by selecting the measurement with least congestion.
+     */
+    object TimeSync {
+        const val INTERVAL_MS = 250L          // Send time sync 4x per second
+        const val BURST_COUNT = 10            // Send 10 packets per burst
+        const val BURST_DELAY_MS = 50L        // 50ms between burst packets
+    }
+
+    /**
+     * Buffer duration targets (seconds).
+     *
+     * The server's BufferTracker paces delivery by wire bytes; we calculate
+     * the byte cap from these durations using the highest-bitrate PCM format
+     * we advertise. This keeps decoded-PCM memory bounded regardless of codec:
+     * - PCM: ~DURATION seconds in memory
+     * - FLAC (~50% compression): ~2x DURATION seconds, still reasonable
+     */
+    object Buffer {
+        const val DURATION_NORMAL_SEC = 35    // 30s target + 5s sync headroom
+        const val DURATION_LOW_MEM_SEC = 10
+    }
+
+    /**
+     * Player timing capabilities reported via client/state (spec 2026-06-01,
+     * "player timing capabilities"). Both fields are required for players;
+     * servers use max(required_lead_time_ms, min_buffer_ms) + static_delay_ms
+     * to compute per-player send-ahead, which matters most for live streams.
+     *
+     * Values are conservative static defaults for Android: AudioTrack warmup
+     * plus MediaCodec init is typically well under 500 ms, and 500 ms of
+     * jitter buffer comfortably absorbs Wi-Fi variance. The spec allows
+     * runtime (debounced) updates if we later measure these empirically.
+     * For comparison, aiosendspin defaults to 250/250 on desktop.
+     */
+    object PlayerTiming {
+        const val REQUIRED_LEAD_TIME_MS = 500
+        const val MIN_BUFFER_MS = 500
+    }
+
+    /**
+     * Protocol message type identifiers.
+     */
+    object MessageType {
+        // Cleartext handshake. These three are the ONLY messages sent as
+        // WebSocket text frames; everything below travels as a Noise ciphertext
+        // in a binary frame once transport mode begins.
+        const val CLIENT_INIT = "client/init"
+        const val SERVER_INIT = "server/init"
+        const val NOISE_HANDSHAKE = "noise/handshake"
+
+        const val CLIENT_HELLO = "client/hello"
+        const val SERVER_HELLO = "server/hello"
+        const val SERVER_ACTIVATE = "server/activate"
+        const val PAIR_ABORT = "pair/abort"
+        const val CLIENT_PAIR_PENDING = "client/pair-pending"
+        const val CLIENT_PAIR_INIT = "client/pair-init"
+        const val SERVER_PAIR_INIT = "server/pair-init"
+        const val CLIENT_PAIR_AUTH = "client/pair-auth"
+        const val SERVER_PAIR_AUTH = "server/pair-auth"
+        const val CLIENT_PAIR_CONFIRM = "client/pair-confirm"
+        const val SERVER_PAIR_CONFIRM = "server/pair-confirm"
+        const val CLIENT_PAIR_FINALIZE = "client/pair-finalize"
+        const val SERVER_PAIR_FINALIZE = "server/pair-finalize"
+        const val CLIENT_TIME = "client/time"
+        const val SERVER_TIME = "server/time"
+        const val CLIENT_STATE = "client/state"
+        const val SERVER_STATE = "server/state"
+        const val CLIENT_COMMAND = "client/command"
+        const val SERVER_COMMAND = "server/command"
+        const val CLIENT_GOODBYE = "client/goodbye"
+
+        /**
+         * Valid at any time regardless of `activities`; notably it does NOT
+         * require `'management'`, so it must never be gated on the activity set.
+         */
+        const val SERVER_UNPAIR = "server/unpair"
+        const val GROUP_UPDATE = "group/update"
+        const val STREAM_START = "stream/start"
+        const val STREAM_END = "stream/end"
+        const val STREAM_CLEAR = "stream/clear"
+        const val STREAM_REQUEST_FORMAT = "stream/request-format"
+        const val CLIENT_SYNC_OFFSET = "client/sync_offset"
+
+        // Management. Every one of these is answered by exactly one
+        // MANAGEMENT_RESULT; ordering alone matches reply to request, so none
+        // of them carries an identifier.
+        const val MANAGEMENT_LIST_RECORDS = "management/list-records"
+        const val MANAGEMENT_ADD_RECORD = "management/add-record"
+        const val MANAGEMENT_REMOVE_RECORD = "management/remove-record"
+        const val MANAGEMENT_GET_PAIRING_CONFIG = "management/get-pairing-config"
+        const val MANAGEMENT_SET_PAIRING_CONFIG = "management/set-pairing-config"
+        const val MANAGEMENT_OPEN_PAIRING_WINDOW = "management/open-pairing-window"
+        const val MANAGEMENT_RESULT = "management/result"
+    }
+
+    /**
+     * Supported client roles.
+     */
+    object Roles {
+        const val PLAYER = "player@v1"
+        const val CONTROLLER = "controller@v1"
+        const val METADATA = "metadata@v1"
+        const val ARTWORK = "artwork@v1"
+    }
+
+    /**
+     * Role names as they appear in `stream/end` and `stream/clear`, which the
+     * spec writes UNVERSIONED.
+     *
+     * This asymmetry is deliberate on the spec's part, not an oversight:
+     * `supported_roles` and `active_roles` carry versioned identifiers
+     * (`player@v1`), while `messaging.md` defines `stream/end`'s field as
+     * "roles to end streams for ('player', 'artwork', 'visualizer')" and
+     * `stream/clear`'s as "which roles to clear: 'player', 'visualizer', or
+     * both". Comparing a versioned constant against either array therefore
+     * never matches, and the message is silently ignored.
+     */
+    object StreamRoles {
+        const val PLAYER = "player"
+        const val ARTWORK = "artwork"
+        const val VISUALIZER = "visualizer"
+    }
+
+    /**
+     * Does [name] denote the stream role [base]?
+     *
+     * Matches the spec's unversioned form and tolerates a versioned one, so a
+     * server that sends `player@v1` here is still understood. Being liberal in
+     * what we accept costs nothing: the two forms cannot denote different
+     * roles, and the failure this guards against is silence, not a wrong
+     * action.
+     */
+    fun isStreamRole(name: String, base: String): Boolean =
+        name.substringBefore('@') == base
+}
+
+/**
+ * A time sync measurement from NTP-style exchange.
+ */
+data class TimeMeasurement(
+    val offset: Long,
+    val rtt: Long,
+    val clientReceived: Long
+)
+
+/**
+ * Progress information from server/state metadata.
+ * Per spec: nested progress object with track_progress, track_duration, playback_speed.
+ *
+ * @param trackProgress Current position in milliseconds
+ * @param trackDuration Total track duration in milliseconds
+ * @param playbackSpeed Speed multiplier (1000 = 1.0x normal speed)
+ */
+data class TrackProgress(
+    val trackProgress: Long,
+    val trackDuration: Long,
+    val playbackSpeed: Int = 1000  // Default to normal speed
+)
+
+/**
+ * Track metadata from server/state messages.
+ * Per spec: includes timestamp, nested progress, and optional fields.
+ *
+ * @param timestamp Server timestamp when metadata was captured (microseconds)
+ * @param title Track title
+ * @param artist Track artist
+ * @param albumArtist Album artist (may differ from track artist for compilations)
+ * @param album Album name
+ * @param artworkUrl URL to album artwork
+ * @param year Release year
+ * @param track Track number (1-indexed)
+ * @param progress Progress information (position, duration, speed)
+ */
+data class TrackMetadata(
+    val timestamp: Long? = null,
+    val title: String? = null,
+    val artist: String? = null,
+    val albumArtist: String? = null,
+    val album: String? = null,
+    val artworkUrl: String? = null,
+    val year: Int? = null,
+    val track: Int? = null,
+    val progress: TrackProgress? = null
+) {
+    // Every field is nullable because `server/state` can clear any of them
+    // individually. Null means "the server has no value for this", which is
+    // distinct from the empty string - the old representation, which could not
+    // tell a cleared title from a title the delta simply did not mention.
+
+    // Convenience properties for backwards compatibility
+    val durationMs: Long get() = progress?.trackDuration ?: 0L
+    val positionMs: Long get() = progress?.trackProgress ?: 0L
+
+    /**
+     * Current track position extrapolated from this metadata snapshot,
+     * using the spec formula:
+     *
+     *   progress + (server_now - timestamp) * playback_speed / 1_000_000
+     *
+     * clamped to [0, duration] (lower bound only when duration is 0 =
+     * unknown/unlimited). Falls back to the raw reported position when
+     * [timestamp] is missing (0), e.g. legacy servers.
+     *
+     * @param serverNowMicros current time on the server clock, in
+     *   microseconds (from the time filter's client->server mapping)
+     */
+    fun progressAtServerTime(serverNowMicros: Long): Long {
+        val p = progress ?: return 0L
+        // A null or zero timestamp means no anchor to extrapolate from - legacy
+        // servers, or a cleared field - so report the raw position.
+        if (timestamp == null || timestamp == 0L) return p.trackProgress
+        val elapsedMicros = serverNowMicros - timestamp
+        val calculated = p.trackProgress +
+                elapsedMicros * p.playbackSpeed / 1_000_000L
+        return if (p.trackDuration != 0L) {
+            calculated.coerceIn(0L, p.trackDuration)
+        } else {
+            calculated.coerceAtLeast(0L)
+        }
+    }
+}
+
+/**
+ * Audio stream configuration from stream/start messages.
+ */
+data class StreamConfig(
+    val codec: String,
+    val sampleRate: Int,
+    val channels: Int,
+    val bitDepth: Int,
+    val codecHeader: ByteArray?
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is StreamConfig) return false
+
+        if (codec != other.codec) return false
+        if (sampleRate != other.sampleRate) return false
+        if (channels != other.channels) return false
+        if (bitDepth != other.bitDepth) return false
+        if (codecHeader != null) {
+            if (other.codecHeader == null) return false
+            if (!codecHeader.contentEquals(other.codecHeader)) return false
+        } else if (other.codecHeader != null) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = codec.hashCode()
+        result = 31 * result + sampleRate
+        result = 31 * result + channels
+        result = 31 * result + bitDepth
+        result = 31 * result + (codecHeader?.contentHashCode() ?: 0)
+        return result
+    }
+}
+
+/**
+ * Controller (group-level) state from the server/state `controller` object.
+ *
+ * Fields are nullable because server/state carries delta updates; null means
+ * "not included in this update". [com.sendspindroid.sendspin.protocol.SendSpinProtocolHandler]
+ * merges deltas into the current state before publishing.
+ *
+ * @param supportedCommands Subset of: play, pause, stop, next, previous,
+ *   volume, mute, repeat_off, repeat_one, repeat_all, shuffle, unshuffle, switch
+ * @param volume Volume of the whole group, 0-100 (average of player volumes)
+ * @param muted Group mute state (true only when all players are muted)
+ * @param repeat Repeat mode: "off", "one", or "all"
+ * @param shuffle Shuffle mode enabled/disabled
+ */
+data class ControllerState(
+    val supportedCommands: List<String>? = null,
+    val volume: Int? = null,
+    val muted: Boolean? = null,
+    val repeat: String? = null,
+    val shuffle: Boolean? = null,
+    /** Furthest seekable position; `controller` role, read by item 3.11. */
+    val seekMaxMs: Long? = null
+)
+
+/**
+ * Result of parsing a server/state message.
+ */
+data class ServerStateResult(
+    val metadata: RoleUpdate<TrackMetadata>,
+    val playbackState: String?,
+    val controller: RoleUpdate<ControllerState>
+)
+
+/**
+ * Group information from group/update messages.
+ */
+data class GroupInfo(
+    val groupId: String,
+    val groupName: String,
+    val playbackState: String
+)
+
+/**
+ * Result from parsing server/hello message.
+ */
+data class ServerHelloResult(
+    val serverName: String,
+    val serverId: String,
+    val activeRoles: List<String>,
+    val connectionReason: String
+)
+
+/**
+ * Result from parsing server/command message.
+ */
+sealed class ServerCommandResult {
+    data class Volume(val volume: Int) : ServerCommandResult()
+    data class Mute(val muted: Boolean) : ServerCommandResult()
+    data class SetOutputDelay(val delayMs: Int) : ServerCommandResult()
+    data class Unknown(val command: String) : ServerCommandResult()
+}
+
+/**
+ * Result from parsing client/sync_offset message.
+ */
+data class SyncOffsetResult(
+    val playerId: String,
+    val offsetMs: Double,
+    val source: String
+)

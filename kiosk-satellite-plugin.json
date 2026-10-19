@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 1,
+  "id": "musicassistantplugin",
+  "name": "Music Assistant",
+  "version": "1.0.0",
+  "minAndroidSdk": 26,
+  "entryClass": "net.markandrew.kiosk.music.MusicAssistantPlugin",
+  "description": "Browse Music Assistant, control players and groups, and play music on this kiosk with an encrypted Sendspin receiver.",
+  "author": "Mark Andrew",
+  "icon": "icon.png",
+  "license": "MIT",
+  "capabilities": ["overlay", "host.read", "host.control", "ha"],
+  "settings": [
+    {"key":"addon","type":"string","title":"Music Assistant server","description":"Choose an accessible Music Assistant Home Assistant app. Leave blank to use the only available server.","group":"Connection","default":"","choices":"plugin"},
+    {"key":"defaultPlayer","type":"string","title":"Default player","description":"The player selected when the plugin opens. Temporary player choices do not change this setting.","group":"Connection","default":"","choices":"plugin"},
+    {"key":"idleRevertSeconds","type":"string","title":"Auto-revert after idle (seconds) · 0 = disabled","description":"Return to the default player after the selected player is idle. Default: 60 seconds. Enter 0 to disable.","group":"Playback","default":"60"},
+    {"key":"duckPercent","type":"number","title":"Ducking · % of current local music volume","description":"Local music level during voice interactions, as a percentage of its current volume. Range: 1–10%; default: 10%.","group":"Playback","default":10,"min":1,"max":10,"step":1,"unit":"%"},
+    {"key":"preventScreensaverWhilePlaying","type":"boolean","title":"Prevent screensaver while playing","description":"Keep the screensaver from starting while the selected Music Assistant player is playing. Does not change Kiosk preferences.","group":"Playback","default":false},
+    {"key":"hardwareGroupVolume","type":"boolean","title":"Hardware buttons control group volume","description":"While this kiosk's local receiver is playing in a group, use its hardware volume buttons to adjust the group. Off by default.","group":"Playback","default":false},
+    {"key":"receiverEnabled","type":"boolean","title":"Enable this kiosk's receiver","description":"Allow encrypted Sendspin playback on this kiosk. Playback control of other players does not require a local receiver.","group":"This device","default":false},
+    {"key":"receiverName","type":"string","title":"Receiver name · blank follows Kiosk","description":"Optional name shown in Music Assistant. Leave blank to follow this kiosk's name.","group":"This device","default":""},
+    {"key":"receiverEndpoint","type":"string","title":"Server override · blank discovers automatically","description":"Advanced: override the discovered Sendspin endpoint. Leave blank for normal setup; encrypted transport and server trust checks still apply.","group":"Diagnostics","default":""},
+    {"key":"receiverServer","type":"string","title":"Remembered discovery server","description":"Saved server identity used by receiver discovery. Normally managed by the plugin.","group":"Diagnostics","default":"","visibleWhen":{"key":"receiverEndpoint","notEmpty":true}},
+    {"key":"playerMode","type":"select","title":"Previous default format","description":"Compatibility setting for older installations. Use Default player for current setup.","group":"Compatibility","default":"Fixed default player","options":["Follow Kiosk Satellite","Fixed default player"],"visibleWhen":{"key":"defaultPlayer","equals":""}},
+    {"key":"localPlayer","type":"string","title":"Previous local player","description":"Legacy player ID retained for upgrades. Use Default player for current setup.","group":"Compatibility","default":"","visibleWhen":{"key":"playerMode","equals":"Follow Kiosk Satellite"}}
+  ],
+  "buttons": [
+    {"id":"checkConnection","title":"Check Music Assistant connection","label":"Check","group":"Connection","description":"Read-only check of the saved server, sign-in and player access. Does not pair, save settings or start playback."}
+  ],
+  "commands": [
+    {"id": "toggle", "title": "Open"}
+  ]
+}

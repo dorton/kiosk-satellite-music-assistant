@@ -1,0 +1,18 @@
+/build/
+/dist/
+__pycache__/
+*.class
+**/.gradle/
+**/build/
+**/local.properties
+
+# Local development history and generated packages are not release source.
+/RELEASE-0.*.md
+/HISTORY-prototype.md
+*.zip
+*.zip.sha256
+*.apk
+*.dex
+*.log
+*.tar.gz
+.DS_Store

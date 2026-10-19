@@ -1,0 +1,527 @@
+package com.sendspindroid.sendspin.protocol.message
+
+import com.sendspindroid.sendspin.crypto.Base64Url
+import com.sendspindroid.sendspin.protocol.GoodbyeReason
+import com.sendspindroid.sendspin.protocol.management.ManagementResultCode
+import com.sendspindroid.sendspin.protocol.SendSpinProtocol
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.math.roundToInt
+
+object MessageBuilder {
+
+    /** `trust_level` values (README.md#definitions). Ordered none < user. */
+    const val TRUST_NONE = "none"
+    const val TRUST_USER = "user"
+
+    /**
+     * A `supported_pair_methods` entry.
+     *
+     * "Every client implements at least the Pairing PSK method." The PIN methods
+     * are optional for clients and are deferred to item 4.4 (#220).
+     */
+    data class PairMethodDescriptor(
+        val wireName: String,
+        val locations: List<String>,
+        val outChannels: List<String> = emptyList(),
+        val formats: List<String> = emptyList(),
+    ) {
+        companion object {
+            /**
+             * `locations: ["device"]` because this client generates its own
+             * Pairing PSK from a CSPRNG and shows the resulting token on screen,
+             * which is what "printed on the device" describes. Item 0.3 (#191)
+             * confirmed Music Assistant renders that hint accurately.
+             */
+            val PAIRING_PSK = PairMethodDescriptor("pairing_psk", listOf("device"))
+
+            /**
+             * `out_channels: ["display"]`, `formats: ["digits"]`. Never
+             * `speaker` -- accepting that channel would oblige this client to
+             * accept a server-supplied digit audio pack (ten clips, each with
+             * decode and size validation) for a device that already has a
+             * screen. "At most one" pairing-code method may be offered, so
+             * advertising this one permanently forecloses `static_pairing_code`.
+             */
+            val DYNAMIC_PAIRING_CODE = PairMethodDescriptor(
+                wireName = "dynamic_pairing_code",
+                locations = listOf("device"),
+                outChannels = listOf("display"),
+                formats = listOf("digits"),
+            )
+        }
+    }
+
+    data class FormatEntry(
+        val codec: String,
+        val sampleRate: Int,
+        val channels: Int,
+        val bitDepth: Int
+    )
+
+    /**
+     * Build `client/hello`.
+     *
+     * @param clientId legacy dialect only. `client_id` and `version` moved to
+     *   `client/init` when encryption landed, and `messaging.md#communication`
+     *   forbids sending fields the spec does not define for a message - so on
+     *   an encrypted session this must be null and both fields are omitted.
+     * @param trustLevel `'user'` when a pairing record exists for this server,
+     *   `'none'` otherwise. Required.
+     * @param unpairedAccessEnabled whether this client admits a server with no
+     *   pairing record. This is what decides whether an unpaired connection can
+     *   ever carry playback: the spec permits `['playback']` on a Sentinel-keyed
+     *   session "only when the client has unpaired access enabled", so omitting
+     *   it leaves the server no choice but empty activities.
+     */
+    fun buildClientHello(
+        clientId: String?,
+        deviceName: String,
+        bufferCapacity: Int,
+        manufacturer: String,
+        supportedFormats: List<FormatEntry>,
+        lowMemoryMode: Boolean = false,
+        softwareVersion: String = "unknown",
+        trustLevel: String = TRUST_NONE,
+        unpairedAccessEnabled: Boolean = true,
+        supportedPairMethods: List<PairMethodDescriptor> = listOf(PairMethodDescriptor.PAIRING_PSK),
+    ): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.CLIENT_HELLO)
+            put("payload", buildJsonObject {
+                // Legacy-only. On an encrypted session these live in client/init.
+                if (clientId != null) {
+                    put("client_id", clientId)
+                    put("version", SendSpinProtocol.VERSION)
+                }
+                put("name", deviceName)
+                put("trust_level", trustLevel)
+                put("supported_roles", buildJsonArray {
+                    add(kotlinx.serialization.json.JsonPrimitive(SendSpinProtocol.Roles.PLAYER))
+                    add(kotlinx.serialization.json.JsonPrimitive(SendSpinProtocol.Roles.CONTROLLER))
+                    add(kotlinx.serialization.json.JsonPrimitive(SendSpinProtocol.Roles.METADATA))
+                    if (!lowMemoryMode) {
+                        add(kotlinx.serialization.json.JsonPrimitive(SendSpinProtocol.Roles.ARTWORK))
+                    }
+                })
+                put("device_info", buildJsonObject {
+                    // This vendored receiver belongs to an app; MA uses this generic category
+                    // for account-bound app enrollment. Keep the actual manufacturer below.
+                    put("product_name", "Mobile Application")
+                    put("manufacturer", manufacturer)
+                    put("software_version", softwareVersion)
+                })
+                put("player@v1_support", buildJsonObject {
+                    put("supported_formats", buildJsonArray {
+                        for (fmt in supportedFormats) {
+                            add(buildJsonObject {
+                                put("codec", fmt.codec)
+                                put("sample_rate", fmt.sampleRate)
+                                put("channels", fmt.channels)
+                                put("bit_depth", fmt.bitDepth)
+                            })
+                        }
+                    })
+                    put("buffer_capacity", bufferCapacity)
+                    put("supported_commands", buildJsonArray {
+                        add(kotlinx.serialization.json.JsonPrimitive("volume"))
+                        add(kotlinx.serialization.json.JsonPrimitive("mute"))
+                    })
+                })
+                if (!lowMemoryMode) {
+                    put("artwork@v1_support", buildJsonObject {
+                        put("channels", buildJsonArray {
+                            add(buildJsonObject {
+                                put("source", "album")
+                                put("format", "jpeg")
+                                put("media_width", SendSpinProtocol.Artwork.REQUEST_SIZE)
+                                put("media_height", SendSpinProtocol.Artwork.REQUEST_SIZE)
+                            })
+                        })
+                    })
+                }
+                // Both required by messaging.md#client--server-clienthello.
+                put("supported_pair_methods", buildJsonArray {
+                    for (method in supportedPairMethods) {
+                        add(buildJsonObject {
+                            put("method", method.wireName)
+                            put("locations", buildJsonArray {
+                                for (location in method.locations) {
+                                    add(kotlinx.serialization.json.JsonPrimitive(location))
+                                }
+                            })
+                            // Omitted rather than sent empty, so PAIRING_PSK's
+                            // wire shape is unchanged.
+                            if (method.outChannels.isNotEmpty()) {
+                                put("out_channels", buildJsonArray {
+                                    for (channel in method.outChannels) {
+                                        add(kotlinx.serialization.json.JsonPrimitive(channel))
+                                    }
+                                })
+                            }
+                            if (method.formats.isNotEmpty()) {
+                                put("formats", buildJsonArray {
+                                    for (format in method.formats) {
+                                        add(kotlinx.serialization.json.JsonPrimitive(format))
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+                put("unpaired_access", buildJsonObject {
+                    put("enabled", unpairedAccessEnabled)
+                })
+            })
+        }
+        return message.toString()
+    }
+
+    fun buildClientTime(clientTransmittedMicros: Long): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.CLIENT_TIME)
+            put("payload", buildJsonObject {
+                put("client_transmitted", clientTransmittedMicros)
+            })
+        }
+        return message.toString()
+    }
+
+    /**
+     * Build `client/pair-pending` for the Dynamic Pairing Code flow.
+     *
+     * Sent instead of `client/pair-init` while the attempt is gesture-gated
+     * (`DynamicPairingCodeFlow` in the `AwaitingGesture` state): it carries the
+     * attempt counter alone, with no commitment yet.
+     */
+    fun buildClientPairPending(pairingIndex: Int): String = buildJsonObject {
+        put("type", SendSpinProtocol.MessageType.CLIENT_PAIR_PENDING)
+        put("payload", buildJsonObject {
+            put("pairing_index", pairingIndex)
+        })
+    }.toString()
+
+    /**
+     * Build `client/pair-init` for the Dynamic Pairing Code flow.
+     *
+     * `commit_B = SHA-256("sendspin-pair-commit-v1" || nonce_B)` ([PairingCode.commit]).
+     * Starts the attempt: `pairing_index` folds into the CPace `sid`.
+     */
+    fun buildClientPairInit(pairingIndex: Int, commitB: ByteArray): String = buildJsonObject {
+        put("type", SendSpinProtocol.MessageType.CLIENT_PAIR_INIT)
+        put("payload", buildJsonObject {
+            put("pairing_index", pairingIndex)
+            put("commit_B", Base64Url.encode(commitB))
+        })
+    }.toString()
+
+    /**
+     * Build `client/pair-auth` for the Dynamic Pairing Code flow.
+     *
+     * Carries `Yb`, the client's CPace public share, as `pake_msg_2`.
+     */
+    fun buildClientPairAuth(pakeMsg2: ByteArray): String = buildJsonObject {
+        put("type", SendSpinProtocol.MessageType.CLIENT_PAIR_AUTH)
+        put("payload", buildJsonObject {
+            put("pake_msg_2", Base64Url.encode(pakeMsg2))
+        })
+    }.toString()
+
+    /**
+     * Build `client/pair-confirm` for the Dynamic Pairing Code flow.
+     *
+     * @param clientKc the MCF key-confirmation tag `Tb`.
+     * @param wrappedNonceB the sealed opening of `nonce_B`, so the server can
+     *   check it against the `commit_B` sent in `client/pair-init`.
+     */
+    fun buildClientPairConfirm(clientKc: ByteArray, wrappedNonceB: ByteArray): String = buildJsonObject {
+        put("type", SendSpinProtocol.MessageType.CLIENT_PAIR_CONFIRM)
+        put("payload", buildJsonObject {
+            put("client_kc", Base64Url.encode(clientKc))
+            put("wrapped_nonce_B", Base64Url.encode(wrappedNonceB))
+        })
+    }.toString()
+
+    /**
+     * Build `client/pair-finalize` for the Pairing PSK flow.
+     *
+     * `pairing.md#client--server-clientpair-finalize`: "In the Pairing PSK
+     * Flow, it starts the pairing attempt and is sent immediately after the
+     * `server/activate`, carrying the PSK directly."
+     *
+     * Exactly one of `long_term_psk` and `wrapped_psk` is ever present, and the
+     * wrapped form belongs to the PIN methods this client does not offer - so
+     * only the direct field is emitted here.
+     */
+    fun buildClientPairFinalize(longTermPsk: ByteArray): String {
+        require(longTermPsk.size == 32) {
+            "a Sendspin PSK is 32 bytes, got ${longTermPsk.size}"
+        }
+        return buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.CLIENT_PAIR_FINALIZE)
+            put("payload", buildJsonObject {
+                put("long_term_psk", Base64Url.encode(longTermPsk))
+            })
+        }.toString()
+    }
+
+    /**
+     * Build `client/pair-finalize` for the Dynamic Pairing Code flow.
+     *
+     * Carries the new long-term PSK as `wrapped_psk`, sealed under the CPace
+     * ISK - the direct `long_term_psk` field belongs only to the Pairing PSK
+     * flow, which has no CPace exchange to wrap it with.
+     */
+    fun buildClientPairFinalizeWrapped(wrappedPsk: ByteArray): String = buildJsonObject {
+        put("type", SendSpinProtocol.MessageType.CLIENT_PAIR_FINALIZE)
+        put("payload", buildJsonObject {
+            put("wrapped_psk", Base64Url.encode(wrappedPsk))
+        })
+    }.toString()
+
+    /**
+     * `pair/abort`.
+     *
+     * Only `concurrent_attempt` closes the connection after sending; every
+     * other reason leaves it open so the server can re-activate. Item 2.9
+     * (#226) owns the full enum and the attempt state machine.
+     */
+    fun buildPairAbort(reason: String): String = buildJsonObject {
+        put("type", SendSpinProtocol.MessageType.PAIR_ABORT)
+        put("payload", buildJsonObject { put("reason", reason) })
+    }.toString()
+
+    /** The typed form. Prefer this: a bare string can invent a reason. */
+    /**
+     * A `management/result`.
+     *
+     * Deliberately omits the `storage` accounting object. "a client whose
+     * storage is effectively unbounded or of unknown size omits the key, and
+     * the server relies on `storage_exhausted` alone" - records are roughly a
+     * hundred bytes in EncryptedSharedPreferences on a filesystem measured in
+     * gigabytes, so any capacity figure we invented would corrupt the server's
+     * free/cost arithmetic. `storage_exhausted` stays authoritative for a
+     * genuine write failure.
+     *
+     * Also carries no request identifier: replies are matched to requests by
+     * ordering alone.
+     *
+     * @param data merged into the payload, and only when the operation
+     *   succeeded. A failure that carried state would invite the server to read
+     *   it out of a reply saying the operation did not happen.
+     */
+    fun buildManagementResult(
+        code: ManagementResultCode,
+        data: JsonObject? = null,
+    ): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.MANAGEMENT_RESULT)
+            put("payload", buildJsonObject {
+                put("result", code.wire)
+                if (code == ManagementResultCode.OK && data != null) {
+                    for ((key, value) in data) put(key, value)
+                }
+            })
+        }
+        return message.toString()
+    }
+
+    fun buildGoodbye(reason: GoodbyeReason): String =
+        buildGoodbye(reason.wire)
+
+    fun buildGoodbye(reason: String): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.CLIENT_GOODBYE)
+            put("payload", buildJsonObject {
+                put("reason", reason)
+            })
+        }
+        return message.toString()
+    }
+
+    /**
+     * Build `client/state`.
+     *
+     * @param available whether this client can participate in playback. The
+     *   spec renamed the old `state` string to a boolean (#115), so
+     *   `"synchronized"` / `"error"` / `"external_source"` no longer exist on
+     *   the wire. A player reports `true` only once its clock is synchronised:
+     *   "A player MUST NOT report `available: true` until its time filter has
+     *   converged enough to begin scheduling playback."
+     *
+     *   `false` now means only one thing - the client's output is in use by an
+     *   external system (messaging.md#external-source-handling). It is NOT the
+     *   way to report a sync problem, which is why the convergence gate lives
+     *   at the call site rather than here.
+     */
+    fun buildPlayerState(
+        volume: Int,
+        muted: Boolean,
+        available: Boolean,
+        outputDelayMs: Double = 0.0,
+        requiredLeadTimeMs: Int = SendSpinProtocol.PlayerTiming.REQUIRED_LEAD_TIME_MS,
+        minBufferMs: Int = SendSpinProtocol.PlayerTiming.MIN_BUFFER_MS,
+        playerRoleActive: Boolean = true
+    ): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.CLIENT_STATE)
+            put("payload", buildJsonObject {
+                put("available", available)
+                // "player?: object - only if client has player role". Sending it
+                // for an inactive role is a compliance failure: aiosendspin
+                // rejects the connection outright with "client/state carried a
+                // player object for an inactive role". A client whose roles are
+                // all state-less still sends this message - `available` alone is
+                // what unlocks the server's streams.
+                if (playerRoleActive) put("player", buildJsonObject {
+                    put("volume", volume)
+                    put("muted", muted)
+                    // roles/player/v1.md: delay BEYOND the audio port, integer
+                    // 0-5000, never optional. This is NOT the hardware latency
+                    // we measure and compensate ourselves - the spec says this
+                    // field "does not cover processing delays before the port
+                    // (DAC latency, audio buffers), which the client
+                    // compensates itself". Reporting that here would invite the
+                    // server to compensate a second time.
+                    put("static_delay_ms", outputDelayMs.roundToInt().coerceIn(0, 5000))
+                    // Both timing fields are always required for players.
+                    put("required_lead_time_ms", requiredLeadTimeMs)
+                    put("min_buffer_ms", minBufferMs)
+                    // 9.1.1: volume/mute belong to client/hello support only.
+                    // State-level supported_commands accepts set_static_delay.
+                    put("supported_commands", buildJsonArray {
+                        add(kotlinx.serialization.json.JsonPrimitive("set_static_delay"))
+                    })
+                })
+            })
+        }
+        return message.toString()
+    }
+
+    /**
+     * Build a client/command controller message.
+     *
+     * @param volume only set if [command] is "volume" (0-100)
+     * @param mute only set if [command] is "mute"
+     */
+    fun buildCommand(command: String, volume: Int? = null, mute: Boolean? = null): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.CLIENT_COMMAND)
+            put("payload", buildJsonObject {
+                put("controller", buildJsonObject {
+                    put("command", command)
+                    if (volume != null) put("volume", volume.coerceIn(0, 100))
+                    if (mute != null) put("mute", mute)
+                })
+            })
+        }
+        return message.toString()
+    }
+
+    /**
+     * Build a stream/request-format message for the player role.
+     *
+     * All fields optional; omitted fields keep their current value on the
+     * server. The server responds with stream/start carrying the new format.
+     */
+    fun buildStreamRequestFormat(
+        codec: String? = null,
+        sampleRate: Int? = null,
+        channels: Int? = null,
+        bitDepth: Int? = null
+    ): String {
+        val message = buildJsonObject {
+            put("type", SendSpinProtocol.MessageType.STREAM_REQUEST_FORMAT)
+            put("payload", buildJsonObject {
+                put("player", buildJsonObject {
+                    if (codec != null) put("codec", codec)
+                    if (sampleRate != null) put("sample_rate", sampleRate)
+                    if (channels != null) put("channels", channels)
+                    if (bitDepth != null) put("bit_depth", bitDepth)
+                })
+            })
+        }
+        return message.toString()
+    }
+
+    /**
+     * Calculate buffer_capacity (wire bytes) from target duration and format list.
+     *
+     * Uses the highest-bitrate PCM entry we advertise as the basis, so the cap
+     * is tight for PCM and gives compressed codecs proportionally more seconds
+     * of look-ahead (but bounded decoded memory).
+     */
+    fun calculateBufferCapacity(formats: List<FormatEntry>, durationSec: Int): Int {
+        val maxPcmBytesPerSec = formats
+            .filter { it.codec == "pcm" }
+            .maxOfOrNull { it.sampleRate * it.channels * (it.bitDepth / 8) }
+            ?: (SendSpinProtocol.AudioFormat.SAMPLE_RATE
+                    * SendSpinProtocol.AudioFormat.CHANNELS
+                    * (SendSpinProtocol.AudioFormat.BIT_DEPTH / 8))
+        return durationSec * maxPcmBytesPerSec
+    }
+
+    /**
+     * Build the supported_formats list for the client/hello message.
+     *
+     * The advertised list never contains a codec other than [preferredCodec] or
+     * `"pcm"`, and when both are present the preferred codec appears first
+     * (each with stereo+mono variants at the appropriate bit depths). Edge cases:
+     * - If [preferredCodec] is not supported on this device, it is silently dropped
+     *   and only PCM is advertised. The Settings UI surfaces supported codecs
+     *   explicitly; this fallback exists so a connection can still succeed even
+     *   if support state was stale at the time the preference was set.
+     * - If [preferredCodec] is `"pcm"`, PCM is advertised once (not twice).
+     * - If neither the preferred codec nor PCM is supported (shouldn't happen on
+     *   any real Android device; PCM is always supported), the list is empty.
+     *
+     * Compressed codecs (FLAC, Opus) are always advertised at 16-bit. PCM is
+     * advertised at every entry in [supportedBitDepths], highest first (so the
+     * server picks the best-quality match).
+     */
+    fun buildSupportedFormats(
+        preferredCodec: String,
+        isCodecSupported: (String) -> Boolean,
+        supportedBitDepths: List<Int> = listOf(SendSpinProtocol.AudioFormat.BIT_DEPTH)
+    ): List<FormatEntry> {
+        val codecOrder = mutableListOf<String>()
+
+        if (preferredCodec != "pcm" && isCodecSupported(preferredCodec)) {
+            codecOrder.add(preferredCodec)
+        }
+
+        if (isCodecSupported("pcm")) {
+            codecOrder.add("pcm")
+        }
+
+        return buildList {
+            for (codec in codecOrder) {
+                // Higher bit depths only apply to PCM; compressed codecs
+                // (FLAC, Opus) decode to 16-bit PCM regardless of source depth.
+                val depths = if (codec == "pcm") {
+                    supportedBitDepths.sortedDescending()
+                } else {
+                    listOf(SendSpinProtocol.AudioFormat.BIT_DEPTH)
+                }
+                for (bitDepth in depths) {
+                    // Stereo
+                    add(FormatEntry(
+                        codec = codec,
+                        sampleRate = SendSpinProtocol.AudioFormat.SAMPLE_RATE,
+                        channels = SendSpinProtocol.AudioFormat.CHANNELS,
+                        bitDepth = bitDepth
+                    ))
+                    // Mono
+                    add(FormatEntry(
+                        codec = codec,
+                        sampleRate = SendSpinProtocol.AudioFormat.SAMPLE_RATE,
+                        channels = SendSpinProtocol.AudioFormat.CHANNELS_MONO,
+                        bitDepth = bitDepth
+                    ))
+                }
+            }
+        }
+    }
+}

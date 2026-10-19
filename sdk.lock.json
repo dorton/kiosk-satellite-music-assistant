@@ -1,0 +1,14 @@
+{
+  "repository": "jxlarrea/kiosk-satellite-plugin-hello-world",
+  "commit": "be608a17e159f1df57635453e4f90595be7e26bc",
+  "license": "Apache-2.0",
+  "git_blobs": {
+    "sdk/src/me/jxl/kiosk/plugins/KioskPlugin.java": "c19b0e5f97ba7f85bd1e319dac614da60cd4b2b3",
+    "sdk/src/me/jxl/kiosk/plugins/PluginHost.java": "5e9c11869c7ab0d85fc4222c7d5b23f8b95ee9a6",
+    "sdk/src/me/jxl/kiosk/plugins/OverlayFactory.java": "64d16b054696e4ed6d6eb84a1c87a2e80284c3ae",
+    "sdk/src/me/jxl/kiosk/plugins/OverlaySpec.java": "e5cf3add7c6874b7b715d0506db678c1a4a8639c",
+    "sdk/src/me/jxl/kiosk/plugins/KsTheme.java": "68fd2d55854f5666e21782c7f4039705a5f9109a",
+    "LICENSE": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+    "sdk/src/me/jxl/kiosk/plugins/CameraFrame.java": "e161dbd35fb1119c9ee88471cf849ca8c3abe99d"
+  }
+}

@@ -1,0 +1,79 @@
+# Adapted from the official Kiosk Satellite plugin template release workflow.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REF_TYPE" = tag
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          version = json.load(open('kiosk-satellite-plugin.json'))['version']
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version), 'A stable version is required'
+          assert os.environ['GITHUB_REF_NAME'] == 'v' + version, 'Tag must match manifest version'
+          assert os.path.isfile('RELEASE-' + version + '.md'), 'Release notes are required'
+          if os.environ['GITHUB_EVENT_NAME'] != 'push':
+              release = json.loads(subprocess.check_output(['gh', 'release', 'view', os.environ['GITHUB_REF_NAME'], '--json', 'isDraft,isPrerelease']))
+              assert not release['isDraft'] and not release['isPrerelease'], 'Publish a stable release first'
+          PY
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Verify checked-in SDK and Gradle wrapper
+        run: |
+          python3 - <<'PY'
+          import hashlib, importlib.util
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('builder', 'tools/build.py')
+          module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+          module.sdk_sources()
+          assert hashlib.sha256(Path('player-build/gradle/wrapper/gradle-wrapper.jar').read_bytes()).hexdigest() == 'b3a875ddc1f044746e1b1a55f645584505f4a10438c1afea9f15e92a7c42ec13'
+          PY
+      - name: Test
+        run: python3 tools/test.py --fetch-test-deps
+      - name: Build
+        run: python3 tools/build.py --version "${GITHUB_REF_NAME#v}"
+      - name: Validate release artifacts
+        run: |
+          python3 tools/check_package.py "dist/musicassistantplugin-${GITHUB_REF_NAME#v}.zip"
+          python3 tools/release_check.py
+      - name: Publish stable release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          tag = os.environ['GITHUB_REF_NAME']; version = tag.removeprefix('v')
+          assets = ['dist/musicassistantplugin-' + version + '.zip',
+                    'dist/musicassistantplugin-' + version + '.zip.sha256',
+                    'dist/kiosk-satellite-plugin.json']
+          if os.environ['GITHUB_EVENT_NAME'] == 'push':
+              title = 'Music Assistant ' + version + (' — First community release' if version == '1.0.0' else '')
+              subprocess.check_call(['gh', 'release', 'create', tag, '--verify-tag',
+                  '--title', title,
+                  '--notes-file', 'RELEASE-' + version + '.md', *assets])
+          else:
+              subprocess.check_call(['gh', 'release', 'upload', tag, *assets])
+          PY

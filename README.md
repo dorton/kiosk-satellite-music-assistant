@@ -1,161 +1,123 @@
 # Music Assistant for Kiosk Satellite
 
-Browse your Music Assistant library, control players and groups, and play music
-on your kiosk through an independent, encrypted Sendspin receiver.
+Play and control your Music Assistant library from a wall-mounted Kiosk.
 
-By **Mark Andrew** · **1.0.0** · [MIT licence](LICENSE)
+Browse your music, podcasts and radio, see what is playing, manage the queue and
+control players and groups — all from the touch screen.
 
-## Features
+By **Mark Andrew** · Version **1.0.0** · [MIT licence](LICENSE)
+
+## What you can do
 
 - Browse albums, artists, tracks, playlists, radio, podcasts and audiobooks.
-- Search, filter favourites and choose which Library categories appear.
-- Now Playing with artwork, live radio metadata and playback controls.
-- Live queue views, touch-and-hold item menus and playlist creation.
-- Select players, manage supported groups and adjust member volumes.
-- Optional local playback, hardware group-volume control and voice ducking.
-- Track lyrics and per-player EQ when supported and permitted by Music Assistant.
+- Search, mark favourites and choose which Library sections are shown.
+- See what is playing, with artwork and live radio information.
+- View the queue, reorder it and act on items with a press and hold.
+- Choose a player, manage supported groups and set member volumes.
+- Show track lyrics and adjust the sound for a supported player.
+- Optionally play music on this kiosk itself, in sync with the rest of the house.
 
-The plugin does not require or reconfigure Kiosk's built-in Sendspin player.
+It also works as a controller only: leave playback off and use it to run music
+playing on other players.
 
-## Requirements
+## What you need
 
-- **Kiosk Satellite** with public plugin SDK 1 support, on **Android 8.0+**.
-  Kiosk 2026.10.31 provides the Remote Admin choice-refresh controls used here.
-- A **Music Assistant Home Assistant app** accessible through Home Assistant
-  Ingress, using the kiosk's existing Home Assistant account.
-- Music Assistant **2.10.x**; development verification used **2.10.2** and
-  **aiosendspin 9.1.1**. Other versions and newer Sendspin protocol revisions
-  have not been verified. Hardware group-volume routing is guarded to 2.10.x.
-- For local playback, the kiosk must be able to reach the discovered Sendspin
-  endpoint. mDNS discovery may need an explicit endpoint override across subnets.
+- **Kiosk Satellite** with plugin support, on **Android 8.0 or newer**.
+- **Home Assistant** with the **Music Assistant** app installed, signed in with
+  the same account the kiosk already uses.
+- **Music Assistant 2.10.x**.
 
-Standalone Music Assistant servers without Home Assistant app Ingress are not
-automatically configured. EQ requires the selected player's DSP support and
-`config.players.read` / `config.players.write` permissions; the plugin does not
-grant these permissions or elevate a regular account.
+You do not need to change any Kiosk settings, and the plugin never reconfigures
+Kiosk's own music player.
 
 ## Install
 
-1. Open [Releases](https://github.com/mark-andrew/kiosk-satellite-music-assistant/releases/latest).
-2. Download **`musicassistantplugin-1.0.0.zip`**, not GitHub's source archive.
-3. Install the ZIP with Kiosk's **Plugin Manager** ZIP installer and enable
-   **Music Assistant**. Accept only permissions you understand.
-4. Open the plugin and follow the setup below.
+1. Open the [latest release](https://github.com/mark-andrew/kiosk-satellite-music-assistant/releases/latest).
+2. Download the plugin file, **`musicassistantplugin-1.0.0.zip`** — not the
+   "Source code" archive.
+3. On the kiosk, open the **Plugin Manager**, install that ZIP and enable
+   **Music Assistant**. Accept only the permissions you are happy with.
+4. Open the plugin from its icon.
 
-The repository is `kiosk-satellite-music-assistant`. Release ZIPs use the retained
-plugin ID, `musicassistantplugin`, as required by the community directory.
+**Already using an earlier build?** Update in place. Do not uninstall the plugin,
+clear its storage or reset pairing — your settings and player identity are kept.
 
-**Updating from a development build:** update in place. Do not uninstall, clear
-storage or reset pairing. The plugin ID, saved settings and receiver identity
-are retained. Community-directory installation becomes available only after
-separate approval; this README does not claim the plugin is already listed.
+## Set it up
 
-## Set up
+Open the plugin, then **Library → Settings → Plugin**:
 
-Open **Library → Settings → Plugin**:
-
-1. Choose a **Music Assistant server**. A single accessible app can be selected
-   automatically; choose explicitly if more than one is available.
-2. Enable **Enable this kiosk's receiver** for playback on this device. Leave
-   **Server override** blank for normal discovery. A blank receiver name follows
-   the kiosk's name; a custom name is retained.
-3. Choose your **Default player**, either this kiosk or another accessible player.
-4. Tap **Save**. Cancel discards staged changes. Each kiosk has its own settings.
-
-Receiver registration uses the current Music Assistant account and retains the
-kiosk's identity. Permission or trust failures are shown rather than bypassed.
-Selecting an external default allows controller-only use without a local receiver.
+1. Choose your **Music Assistant server**. If only one is available it is
+   selected for you.
+2. Turn on **Enable this kiosk's receiver** if you want music to play from this
+   kiosk. Leave **Server override** blank unless you have been told otherwise. A
+   blank receiver name follows the kiosk's name; you can type your own.
+3. Choose your **Default player** — this kiosk, or another player in your home.
+4. Tap **Save**. Each kiosk keeps its own settings.
 
 ### Playback preferences
 
-| Setting | Behaviour |
+| Setting | What it does |
 | --- | --- |
-| Auto-revert after idle | Returns to the default player after the temporary player is idle. Default: **60 seconds**; **0 disables** it. |
-| Ducking | Local music level during voice interactions, as **1–10%** of its current volume. Default: **10%**. |
-| Prevent screensaver while playing | Optional; off by default. Does not change Kiosk's saved display preferences. |
-| Hardware buttons control group volume | Optional; off by default. Applies to the grouped, playing **local receiver**, not a temporary player selection. |
+| Auto-revert after idle | Goes back to your default player after you have finished with a temporary one. Default **60 seconds**; set **0** to switch this off. |
+| Ducking | How far the music drops during a voice announcement, as **1–10%** of the current volume. Default **10%**. |
+| Prevent screensaver while playing | Keeps the screen awake while music plays. Off by default, and it does not change your Kiosk display settings. |
+| Hardware buttons control group volume | Lets the kiosk's volume buttons adjust the whole group this kiosk is playing in. Off by default. |
 
-Kiosk's native settings are never changed automatically. External-player hardware
-control also depends on Kiosk's own media-player volume routing. The **Group
-volume** slider label describes its current target independently of the hardware
-button preference.
+## Using it
 
-## Touch controls
+- **Tap** an album or other item to open it, and tap a track, radio station or
+  queue item to play it.
+- **Press and hold** an item, or tap **⋮**, for the actions available on it.
+- **Play** on an album starts it straight away, replacing what is playing.
+- Choosing a player for a moment does not change your saved default. Going back
+  to the Library returns to the player you selected, and the idle timer can
+  return you to the default.
+- The queue keeps up if someone skips a track on another kiosk or in the Music
+  Assistant app.
+- **Close** just puts the interface away — the music carries on.
 
-- Tap an album or other container to open it. Tap a track, radio station or queue
-  item to play it. Hold an item or tap **⋮** for its actions.
-- Album **Play** starts the album immediately, replacing the active queue.
-- The player menu offers queue, group, transfer, lyrics and playlist actions.
-  Destructive actions require confirmation and fresh permission/state checks.
-- Player choices are temporary and do not overwrite the saved default. Library
-  returns to the selected player; idle auto-revert can restore the default.
-- Queue views follow remote track changes while open. Already played/current
-  queue entries are protected from unsupported removal.
-- **Close** dismisses the interface; it does not stop playback or change display
-  preferences. Leaving Library for the player clears search, while detail/back
-  navigation retains its context.
-- EQ changes and resets are staged until **Apply**. Unrelated DSP filters are
-  preserved. EQ is hidden when the account lacks the required permissions.
+## Your privacy
 
-## Connection checks and privacy
+- Sign-in is handled by Kiosk. You never type a password or token into the plugin.
+- Your Music Assistant sign-in details stay in memory and are not written to disk.
+  Pairing credentials are stored encrypted and tied to that one server.
+- Artwork is fetched without your sign-in details and without following redirects.
+- Nothing is sent to the plugin's author. Music Assistant, your configured
+  providers and the artwork hosts still receive the requests their features need.
+- Actions are never retried automatically. If something looks uncertain, check
+  the player, queue or library before trying again.
 
-Use **Plugin preferences → Diagnostics → Check connection** for server, sign-in,
-player and receiver status. Remote Admin also offers choice refresh and a
-read-only connection check on supported Kiosk versions. Refresh/check actions do
-not select defaults, save settings, pair a receiver or change playback. Explicit
-reconnect and registration-retry actions are separate.
+See [SECURITY.md](SECURITY.md) for how to report a security concern.
 
-- Home Assistant authentication is supplied by Kiosk; no manual token is needed.
-- Ingress sessions remain in memory. Receiver credentials use an encrypted,
-  server-bound store. HTTPS checks and encrypted Sendspin trust are not bypassed.
-- External HTTPS artwork is requested without the Ingress cookie or redirects.
-- No temporary collector, remote debug logging or plugin telemetry is included.
-  Music Assistant, configured providers and artwork hosts still receive the
-  requests needed for their features.
-- Playback and library writes are not automatically retried. If an outcome is
-  uncertain, check the actual player, queue or library before retrying.
+## Things to know
 
-See [SECURITY.md](SECURITY.md) for the security boundary and reporting guidance.
+- **Lyrics are not available for radio playback.** Live station information can
+  still appear while playing.
+- Artwork, grouping, library actions and sound settings depend on the player you
+  are using and the permissions of your account.
+- Very long lists are trimmed: narrow your search or filters if a section stops
+  growing. Search shows up to 25 results per type.
+- Sound settings are staged until you tap **Apply**, so you can try changes and
+  cancel them. Your other sound settings are left alone.
 
-## Known limits
+## If something isn't working
 
-- **Lyrics are not available for radio playback.** Live station-provided song
-  details may still appear in Now Playing. Track lyrics depend on your providers.
-- Artwork, metadata, grouping, library operations and EQ depend on player/provider
-  capabilities and account permissions.
-- Browsing is bounded to about 2,000 accumulated items; narrow the search/filter
-  at the limit. Search returns up to 25 results per type. Artwork and API reads
-  have size/time limits.
-- Open queue/group/lyrics panels use bounded polling, not a permanent Music
-  Assistant event connection. Native hardware volume steps differ by device.
-- Automated fixtures do not prove rendering, timing or every physical device's
-  behaviour. See the [release checklist](docs/RELEASING.md).
+Open **Plugin preferences → Diagnostics → Check connection** to see the status of
+your server, sign-in, players and this kiosk's receiver.
 
-## Build and test
+- **No servers listed** — check the Music Assistant app is running in Home
+  Assistant and that the kiosk is signed in.
+- **No sound on this kiosk** — check **Enable this kiosk's receiver**, and
+  confirm the kiosk can see the Music Assistant server on your network.
+- **Lyrics are missing** — the message **"Lyrics are not available for radio
+  playback."** is expected for live radio. Track lyrics depend on your providers.
+- **A sound setting is greyed out** — the account signed in on the kiosk does not
+  have permission to change it.
 
-The documented build targets Linux/macOS with Python 3, **JDK 21**, Android SDK **platform 36 / build-tools 36.0.0**
-and accepted Android SDK licences. The included **Gradle 9.3.1** wrapper verifies
-its distribution checksum. Its first run downloads Gradle and dependencies;
-these development commands never install the plugin on a kiosk.
+## Credits
 
-```sh
-python3 tools/test.py --fetch-test-deps
-python3 tools/build.py --version 1.0.0
-python3 tools/check_package.py dist/musicassistantplugin-1.0.0.zip
-python3 tools/release_check.py
-```
+Independent community plugin by Mark Andrew. Music Assistant, Kiosk Satellite and
+the included player components are the work of their respective authors; see
+[NOTICE.md](NOTICE.md) and [DEPENDENCIES.md](DEPENDENCIES.md).
 
-`--fetch-test-deps` verifies and downloads the pinned test-only org.json JAR for
-the pure-Java loopback API tests. For an offline build, supply it with
-`--json-jar /path/to/org.json.jar`. Android fixtures also exercise real API classes.
-Run builds/tests serially; do not run two Gradle processes in this checkout.
-
-The compile-only SDK is included under `sdk/`, with its upstream licence. Its
-exact revision and Git blob hashes are verified against `sdk.lock.json`; SDK
-classes are not shipped in the plugin DEX. `--fetch-sdk` can restore missing
-pinned SDK files, but refuses modified files. Vendored player provenance and
-modifications are documented in [NOTICE.md](NOTICE.md) and [DEPENDENCIES.md](DEPENDENCIES.md).
-
-Release assets are generated and uploaded by **GitHub Actions**, using the
-[official Kiosk template workflow](https://github.com/jxlarrea/kiosk-satellite-plugin-hello-world/blob/main/.github/workflows/build.yml)
-adapted for the embedded player. See [docs/RELEASING.md](docs/RELEASING.md).
+Building or testing the plugin yourself? See [docs/DEVELOPING.md](docs/DEVELOPING.md).

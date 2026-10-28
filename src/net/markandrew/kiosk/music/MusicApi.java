@@ -243,9 +243,9 @@ final class MusicApi {
             connection.setInstanceFollowRedirects(false);
             connection.setUseCaches(false);
             connection.setConnectTimeout(10000); connection.setReadTimeout(15000);
-            connection.setRequestProperty("Cookie", session.cookie);
+            connection.setRequestProperty(session.header, session.credential);
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("User-Agent", "MusicAssistantPlugin/1.0.0");
+            connection.setRequestProperty("User-Agent", "MusicAssistantPlugin/1.0.1");
             connection.setRequestProperty("Accept-Language", "en-GB");
             if (body != null) {
                 connection.setRequestMethod("POST"); connection.setDoOutput(true);

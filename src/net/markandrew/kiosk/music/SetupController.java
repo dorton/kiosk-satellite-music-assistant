@@ -131,7 +131,7 @@ final class SetupController {
             if(!ui.controllerOnly(draft))panel.toggle("Hardware buttons control group volume",Boolean.TRUE.equals(draft.get("hardwareGroupVolume")),enabled->draft.put("hardwareGroupVolume",enabled));
             panel.section("This device");ui.receiverSettings(panel,draft);
             panel.disclosure("Diagnostics",advanced->{
-                advanced.note("Music Assistant · 1.0.0");
+                advanced.note("Music Assistant · 1.0.1");
                 advanced.add("Check connection",()->checkConnection(draft));
                 ui.diagnostics(advanced,draft);
             });

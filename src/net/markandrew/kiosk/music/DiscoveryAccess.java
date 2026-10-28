@@ -34,10 +34,15 @@ final class DiscoveryAccess {
         }, fail), fail), fail);
     }
     void addons(BooleanSupplier current, Consumer<List<DiscoveryPolicy.Choice>> done, Consumer<String> fail) {
+        if (StandaloneServer.enabled()) {
+            if (current.getAsBoolean()) done.accept(java.util.Collections.singletonList(new DiscoveryPolicy.Choice(StandaloneServer.SLUG, "Standalone Music Assistant")));
+            return;
+        }
         Map<String, Object> message = new HashMap<>(); message.put("type", "get_panels");
         ha(message, current, data -> done.accept(DiscoveryPolicy.panels(data)), fail);
     }
     void resolveAddon(String configured, BooleanSupplier current, Consumer<String> done, Consumer<String> fail) {
+        if (StandaloneServer.enabled()) { done.accept(StandaloneServer.SLUG); return; }
         if (!configured.isEmpty()) {
             try { done.accept(IngressPolicy.addon(configured)); } catch (IllegalArgumentException error) { fail.accept(error.getMessage()); }
             return;

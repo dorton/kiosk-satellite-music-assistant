@@ -61,6 +61,8 @@ def validate_settings(fields):
         kind, default = field.get("type"), field.get("default")
         if kind == "boolean":
             valid = isinstance(default, bool)
+        elif kind == "secret":
+            valid = default == ""
         elif kind == "string":
             valid = isinstance(default, str) and len(default) <= 512
         elif kind == "select":
@@ -97,7 +99,7 @@ def manifest(path):
     assert set(data["capabilities"]) == {"overlay", "host.read", "host.control", "ha"}
     assert {item["id"] for item in data["commands"]} == {"toggle"}
     validate_settings(data["settings"])
-    assert [item["key"] for item in data["settings"]] == ["addon", "defaultPlayer", "idleRevertSeconds", "duckPercent", "preventScreensaverWhilePlaying", "hardwareGroupVolume", "receiverEnabled", "receiverName", "receiverEndpoint", "receiverServer", "playerMode", "localPlayer"]
+    assert [item["key"] for item in data["settings"]] == ["addon", "standaloneUrl", "standaloneToken", "defaultPlayer", "idleRevertSeconds", "duckPercent", "preventScreensaverWhilePlaying", "hardwareGroupVolume", "receiverEnabled", "receiverName", "receiverEndpoint", "receiverServer", "playerMode", "localPlayer"]
     return data
 
 

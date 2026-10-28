@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "musicassistantplugin",
   "name": "Music Assistant",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAndroidSdk": 26,
   "entryClass": "net.markandrew.kiosk.music.MusicAssistantPlugin",
   "description": "Browse Music Assistant, control players and groups, and play music on this kiosk with an encrypted Sendspin receiver.",
@@ -13,6 +13,8 @@
   "capabilities": ["overlay", "host.read", "host.control", "ha"],
   "settings": [
     {"key":"addon","type":"string","title":"Music Assistant server","description":"Choose an accessible Music Assistant Home Assistant app. Leave blank to use the only available server.","group":"Connection","default":"","choices":"plugin"},
+    {"key":"standaloneUrl","type":"string","title":"Standalone server URL · blank uses HA app","description":"Fork option: address of a standalone Music Assistant server, e.g. http://192.168.1.10:8095. Used together with the token below instead of Home Assistant Ingress.","group":"Connection","default":""},
+    {"key":"standaloneToken","type":"secret","title":"Standalone server token","description":"A long-lived token created in Music Assistant (Settings → Profile → Tokens). Required with the standalone URL.","group":"Connection","default":""},
     {"key":"defaultPlayer","type":"string","title":"Default player","description":"The player selected when the plugin opens. Temporary player choices do not change this setting.","group":"Connection","default":"","choices":"plugin"},
     {"key":"idleRevertSeconds","type":"string","title":"Auto-revert after idle (seconds) · 0 = disabled","description":"Return to the default player after the selected player is idle. Default: 60 seconds. Enter 0 to disable.","group":"Playback","default":"60"},
     {"key":"duckPercent","type":"number","title":"Ducking · % of current local music volume","description":"Local music level during voice interactions, as a percentage of its current volume. Range: 1–10%; default: 10%.","group":"Playback","default":10,"min":1,"max":10,"step":1,"unit":"%"},

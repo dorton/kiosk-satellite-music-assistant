@@ -39,7 +39,7 @@ class SourceChecks(unittest.TestCase):
         self.assertIn('settings.cancel',remote)
         self.assertIn('new CancellationException()',remote)
         loader=(SOURCE / 'ArtworkLoader.java').read_text()
-        self.assertIn('if(!external)connection.setRequestProperty("Cookie", session.cookie)',loader)
+        self.assertIn('if(!external)connection.setRequestProperty(session.header, session.credential)',loader)
         self.assertIn('setInstanceFollowRedirects(false)',loader)
         display=(SOURCE / 'MusicApi.java').read_text().split('void annotateDisplayVolume(',1)[1].split('/** Only the exact',1)[0]
         self.assertNotIn('mutate(',display)
@@ -110,7 +110,7 @@ class SourceChecks(unittest.TestCase):
     def test_manifest(self):
         value = builder.manifest(ROOT / "kiosk-satellite-plugin.json")
         self.assertIn("host.control", value["capabilities"])
-        self.assertNotIn("secret", [item["type"] for item in value["settings"]])
+        self.assertEqual(["standaloneToken"], [item["key"] for item in value["settings"] if item["type"] == "secret"])
         group = next(item for item in value["settings"] if item["key"] == "hardwareGroupVolume")
         self.assertEqual("boolean", group["type"])
         self.assertIs(False, group["default"])
@@ -147,7 +147,7 @@ class SourceChecks(unittest.TestCase):
 
     def test_no_privileged_features(self):
         code = "\n".join(file.read_text() for file in SOURCE.glob("*.java"))
-        for forbidden in ["setSSLSocketFactory", "setHostnameVerifier", "CookieManager", "CookieHandler", "SharedPreferences", "getDeclaredField", "auth/long_lived_access_token", "Bearer ", "host.log(", "System.out", "printStackTrace"]:
+        for forbidden in ["setSSLSocketFactory", "setHostnameVerifier", "CookieManager", "CookieHandler", "SharedPreferences", "getDeclaredField", "auth/long_lived_access_token", "host.log(", "System.out", "printStackTrace"]:
             self.assertNotIn(forbidden, code)
         self.assertIn("setInstanceFollowRedirects(false)", code)
         self.assertIn("MAX_RESPONSE", code)
@@ -568,7 +568,7 @@ if __name__ == "__main__":
             subprocess.run(["javac", "--release", "8", "-cp", folder, "-d", folder,
                 str(SOURCE / "NodeResolver.java"),
                 str(ROOT / "tests/discovery-stub/net/markandrew/kiosk/music/ServiceCatalogue.java"),
-                str(SOURCE / "DiscoveryAccess.java"), str(ROOT / "tests/DiscoveryAccessTest.java")], check=True)
+                str(SOURCE / "StandaloneServer.java"), str(SOURCE / "DiscoveryAccess.java"), str(ROOT / "tests/DiscoveryAccessTest.java")], check=True)
             subprocess.run(["java", "-cp", folder, "net.markandrew.kiosk.music.DiscoveryAccessTest"], check=True)
             controller_folder = Path(folder) / "controller"
             subprocess.run(["javac", "--release", "8", "-cp", folder, "-d", folder,

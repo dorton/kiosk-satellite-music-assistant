@@ -15,10 +15,15 @@ final class IngressAccess {
         final String userId, addon;
         final long createdAt=System.nanoTime();
         // Credential: memory only; never render, persist, or log this field.
-        final String cookie;
+        final String header, credential;
         Session(URI origin, URI base, String userId, String addon, String session) {
             this.origin = origin; this.base = base; this.userId = userId; this.addon = addon;
-            this.cookie = "ingress_session=" + IngressPolicy.session(session);
+            this.header = "Cookie"; this.credential = "ingress_session=" + IngressPolicy.session(session);
+        }
+        /** Direct standalone MA server; the MA token stands in for the Ingress session. */
+        Session(URI base, String authorization) {
+            this.origin = base; this.base = base; this.userId = StandaloneServer.SLUG; this.addon = StandaloneServer.SLUG;
+            this.header = "Authorization"; this.credential = authorization;
         }
     }
 
@@ -29,6 +34,7 @@ final class IngressAccess {
 
     void ensure(String addon, BooleanSupplier current, Consumer<Session> success, Consumer<String> failure) {
         if(!current.getAsBoolean())return;
+        if(StandaloneServer.enabled()){deliver(new Session(StandaloneServer.base(),StandaloneServer.authorization()),current,success,failure);return;}
         try{IngressPolicy.addon(addon);}catch(IllegalArgumentException ignored){failure.accept("Music Assistant app is not selected. Resolve the connection in Setup before opening Now Playing.");return;}
         call("getDashboardState", Collections.emptyMap(), false, current, state -> {
             final URI origin;

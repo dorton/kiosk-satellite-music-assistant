@@ -248,6 +248,7 @@ public final class MusicAssistantPlugin implements KioskPlugin, BrowserView.Acti
     private String migrationWarning="";
     @Override public synchronized void configure(Map<String, Object> settings) {
         if(remoteSetup!=null)remoteSetup.cancel();
+        StandaloneServer.configure(settings);
         Map<String,Object> normalized=DefaultPlayerPolicy.normalized(settings);
         if(setupController!=null&&playbackSettingsOnly(this.settings,normalized)){
             this.settings=normalized;

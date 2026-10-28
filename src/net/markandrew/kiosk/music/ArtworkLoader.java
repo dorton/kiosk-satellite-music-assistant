@@ -43,7 +43,7 @@ final class ArtworkLoader {
                 active.set(connection);
                 connection.setInstanceFollowRedirects(false); connection.setUseCaches(false);
                 connection.setConnectTimeout(5000); connection.setReadTimeout(5000);
-                if(!external)connection.setRequestProperty("Cookie", session.cookie);
+                if(!external)connection.setRequestProperty(session.header, session.credential);
                 if (connection.getResponseCode() != 200) return;
                 String type = connection.getContentType();
                 if (type == null || !type.startsWith("image/") || connection.getContentLengthLong() > 512 * 1024) return;

@@ -153,7 +153,7 @@ class PluginReceiver(context: Context) {
             val host = object : SendSpinHost {
                 override val softwareVersion: String
                     get() = net.markandrew.kiosk.music.VolumeCapability.advertise(
-                        "Music Assistant Plugin 1.0.0", NativeVolumeCapabilities.read(context)
+                        "Music Assistant Plugin 1.0.1", NativeVolumeCapabilities.read(context)
                     ).also { volumeAdvertisement = it }
                 override val lowMemoryMode = true
                 override val highPowerMode = false

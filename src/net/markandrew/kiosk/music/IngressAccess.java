@@ -34,7 +34,7 @@ final class IngressAccess {
 
     void ensure(String addon, BooleanSupplier current, Consumer<Session> success, Consumer<String> failure) {
         if(!current.getAsBoolean())return;
-        if(StandaloneServer.enabled()){deliver(new Session(StandaloneServer.base(),StandaloneServer.authorization()),current,success,failure);return;}
+        if(StandaloneServer.enabled()){deliver(standalone(),current,success,failure);return;}
         try{IngressPolicy.addon(addon);}catch(IllegalArgumentException ignored){failure.accept("Music Assistant app is not selected. Resolve the connection in Setup before opening Now Playing.");return;}
         call("getDashboardState", Collections.emptyMap(), false, current, state -> {
             final URI origin;
@@ -72,6 +72,15 @@ final class IngressAccess {
                 }, failure);
             }, failure);
         }, failure);
+    }
+
+    // Callers compare sessions by identity, so reuse one instance per configured server and token.
+    private static volatile Session standaloneSession;
+    private static synchronized Session standalone() {
+        URI base = StandaloneServer.base(); String authorization = StandaloneServer.authorization();
+        Session s = standaloneSession;
+        if (s == null || !s.base.equals(base) || !s.credential.equals(authorization)) standaloneSession = s = new Session(base, authorization);
+        return s;
     }
 
     private void ha(Map<String, Object> message, BooleanSupplier current, Consumer<Map<?, ?>> success, Consumer<String> failure) {

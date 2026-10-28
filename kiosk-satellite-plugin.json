@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "musicassistantplugin",
   "name": "Music Assistant",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minAndroidSdk": 26,
   "entryClass": "net.markandrew.kiosk.music.MusicAssistantPlugin",
   "description": "Browse Music Assistant, control players and groups, and play music on this kiosk with an encrypted Sendspin receiver.",

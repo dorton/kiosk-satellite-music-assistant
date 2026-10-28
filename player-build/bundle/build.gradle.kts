@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "net.markandrew.kiosk.music.bundle"
     compileSdk = 36
-    defaultConfig { applicationId = "net.markandrew.kiosk.music.bundle"; minSdk = 26; targetSdk = 36; versionCode = 69; versionName = "1.0.1" }
+    defaultConfig { applicationId = "net.markandrew.kiosk.music.bundle"; minSdk = 26; targetSdk = 36; versionCode = 70; versionName = "1.0.2" }
     sourceSets.getByName("main") {
         java.srcDirs("../../src", "../../receiver")
         manifest.srcFile("AndroidManifest.xml")
